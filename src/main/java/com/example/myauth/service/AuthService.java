@@ -19,6 +19,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,7 @@ public class AuthService {
   private final JwtTokenProvider jwtTokenProvider;
   private final RefreshTokenRepository refreshTokenRepository;
   private final CustomUserDetailsService customUserDetailsService;
+  private final AuthenticationManager authenticationManager;
 
 
   /**
@@ -158,8 +163,9 @@ public class AuthService {
   }
 
   /**
-   * 로그인 처리 (CustomUserDetailsService 사용 버전)
-   * Spring Security의 표준 방식(UserDetailsService)을 사용하여 로그인을 처리
+   * 로그인 처리 (AuthenticationManager 사용 버전)
+   * Spring Security의 표준 AuthenticationManager를 사용하여 로그인을 처리
+   * - 사용자 조회, 비밀번호 검증, 계정 상태 확인을 자동으로 처리
    * 성공 시 LoginResponse 반환, 실패 시 예외 던지기
    */
   @Transactional
@@ -168,51 +174,32 @@ public class AuthService {
     String normalizedEmail = loginRequest.getEmail().trim().toLowerCase();
     log.info("로그인 시도 (loginEx): {}", normalizedEmail);
 
-    // 2️⃣ CustomUserDetailsService를 통해 사용자 정보를 로드
-    // Spring Security의 표준 방식으로 사용자 조회
-    // loadUserByUsername이 예외를 던질 수 있으므로 catch해서 InvalidCredentialsException으로 변환
-    UserDetails userDetails;
+    // 2️⃣ AuthenticationManager를 통해 인증 처리
+    // Spring Security가 자동으로:
+    // - CustomUserDetailsService를 통해 사용자 조회
+    // - PasswordEncoder를 통해 비밀번호 검증
+    // - UserDetails의 계정 상태 확인 (enabled, accountNonLocked 등)
+    Authentication authentication;
     try {
-      userDetails = customUserDetailsService.loadUserByUsername(normalizedEmail);
-    } catch (Exception e) {
-      log.warn("존재하지 않는 이메일로 로그인 시도 (loginEx): {}", normalizedEmail);
+      authentication = authenticationManager.authenticate(
+          new UsernamePasswordAuthenticationToken(normalizedEmail, loginRequest.getPassword())
+      );
+    } catch (AuthenticationException e) {
+      // 인증 실패: 사용자 없음, 비밀번호 불일치, 계정 비활성화 등
+      log.warn("로그인 실패 (loginEx): {} - {}", normalizedEmail, e.getMessage());
       throw new InvalidCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
     }
 
-    // 3️⃣ 비밀번호를 검증한다
-    boolean isPasswordValid = passwordEncoder.matches(
-        loginRequest.getPassword(),        // 입력된 평문 비밀번호
-        userDetails.getPassword()          // DB에 저장된 암호화된 비밀번호
-    );
-
-    if (!isPasswordValid) {
-      log.warn("잘못된 비밀번호로 로그인 시도 (loginEx): {}", normalizedEmail);
-      throw new InvalidCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
-    }
-
-    // 4️⃣ 계정 상태를 확인한다
-    // UserDetails 인터페이스의 메서드들을 사용하여 계정 상태 확인
-    if (!userDetails.isEnabled()) {
-      log.warn("비활성화된 계정으로 로그인 시도 (loginEx): {}", normalizedEmail);
-      throw new AccountException("비활성화된 계정입니다. 고객센터에 문의해주세요.");
-    }
-
-    if (!userDetails.isAccountNonLocked()) {
-      log.warn("잠긴 계정으로 로그인 시도 (loginEx): {}", normalizedEmail);
-      throw new AccountException("잠긴 계정입니다. 고객센터에 문의해주세요.");
-    }
-
-    // 5️⃣ CustomUserDetails에서 User 엔티티 추출
-    CustomUserDetails customUserDetails = (CustomUserDetails) userDetails;
+    // 3️⃣ 인증 성공 시 User 엔티티 추출
+    CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
     User user = customUserDetails.getUser();
 
-    // 6️⃣ JWT 토큰 생성
+    // 4️⃣ JWT 토큰 생성
     String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getId());
     String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
-
     log.info("JWT 토큰 생성 완료 (loginEx): {}", normalizedEmail);
 
-    // 7️⃣ Refresh Token을 DB에 저장
+    // 5️⃣ Refresh Token을 DB에 저장
     RefreshToken refreshTokenEntity = RefreshToken.builder()
         .token(refreshToken)
         .user(user)
@@ -225,7 +212,7 @@ public class AuthService {
     refreshTokenRepository.save(refreshTokenEntity);
     log.info("Refresh Token DB 저장 완료 (loginEx): {}", normalizedEmail);
 
-    // 8️⃣ 로그인 성공 응답 반환
+    // 6️⃣ 로그인 성공 응답 반환
     LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
         .id(user.getId())
         .email(user.getEmail())

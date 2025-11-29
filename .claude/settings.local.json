@@ -9,7 +9,9 @@
       "Bash(xargs kill:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(./gradlew dependencies:*)"
+      "Bash(./gradlew dependencies:*)",
+      "Bash(/tmp/login_response.json)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

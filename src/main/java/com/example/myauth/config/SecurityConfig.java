@@ -1,11 +1,15 @@
 package com.example.myauth.config;
 
+import com.example.myauth.security.CustomLogoutHandler;
+import com.example.myauth.security.CustomLogoutSuccessHandler;
 import com.example.myauth.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -26,6 +30,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final CustomLogoutHandler customLogoutHandler;
+  private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 
   /**
    * 비밀번호 암호화에 사용할 PasswordEncoder
@@ -33,6 +39,18 @@ public class SecurityConfig {
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
+  }
+
+  /**
+   * Spring Security의 표준 인증 관리자
+   * 사용자 인증을 처리하는 핵심 컴포넌트
+   * - UserDetailsService를 통해 사용자 정보 로드
+   * - PasswordEncoder를 통해 비밀번호 검증
+   * - 계정 상태 확인 (활성화, 잠금, 만료 등)
+   */
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    return config.getAuthenticationManager();
   }
 
   /**
@@ -53,7 +71,15 @@ public class SecurityConfig {
         // 4️⃣ 세션 사용 안 함 (JWT 사용)
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-        // 5️⃣ 경로별 인증 규칙 설정
+        // 5️⃣ 로그아웃 설정
+        .logout(logout -> logout
+            .logoutUrl("/logout")  // 로그아웃 URL
+            .addLogoutHandler(customLogoutHandler)  // 커스텀 로그아웃 핸들러 (Refresh Token 삭제)
+            .logoutSuccessHandler(customLogoutSuccessHandler)  // 커스텀 성공 핸들러 (JSON 응답)
+            .permitAll()  // 로그아웃 URL은 인증 없이 접근 가능
+        )
+
+        // 6️⃣ 경로별 인증 규칙 설정
         .authorizeHttpRequests(auth ->
             auth
                 // 인증 없이 접근 가능한 경로

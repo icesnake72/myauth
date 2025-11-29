@@ -69,6 +69,15 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
   int revokeAllByUserId(@Param("userId") Long userId);
 
   /**
+   * 사용자 이메일로 모든 Refresh Token을 삭제한다 (로그아웃 시 사용)
+   * @param email 사용자 이메일
+   * @return 삭제된 행 수
+   */
+  @Modifying
+  @Query("DELETE FROM RefreshToken rt WHERE rt.user.email = :email")
+  int deleteByUserEmail(@Param("email") String email);
+
+  /**
    * 만료된 토큰을 삭제한다 (배치 작업에 사용)
    * @param now 현재 시간
    * @return 삭제된 행 수
