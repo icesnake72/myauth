@@ -25,13 +25,15 @@ public class User {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, unique = true, length = 255)
+  /**  이메일 (필수 필드 - 카카오 개발자 콘솔에서 필수 동의 항목으로 설정) */
+  @Column(nullable = false, unique = true, length = 100)
   private String email;
 
   @Column(nullable = false, length = 255)
   private String name;
 
-  @Column(nullable = false, length = 255)
+  /** 비밀번호 (OAuth 로그인 시 불필요하므로 nullable) */
+  @Column(length = 255)
   private String password;
 
   /** enum('ROLE_ADMIN','ROLE_USER') DEFAULT 'ROLE_USER' */
@@ -87,6 +89,22 @@ public class User {
   @ColumnDefault("'ACTIVE'")
   @Builder.Default
   private Status status = Status.ACTIVE;
+
+  // ----- OAuth 관련 필드 -----
+
+  /** 로그인 제공자 (LOCAL, KAKAO, GOOGLE 등) */
+  @Column(length = 20)
+  @ColumnDefault("'LOCAL'")
+  @Builder.Default
+  private String provider = "LOCAL";
+
+  /** OAuth 제공자의 고유 ID (카카오 회원번호 등) */
+  @Column(name = "provider_id", length = 100)
+  private String providerId;
+
+  /** 프로필 이미지 URL */
+  @Column(name = "profile_image", length = 500)
+  private String profileImage;
 
   // ----- ENUMS -----
   public enum Role {

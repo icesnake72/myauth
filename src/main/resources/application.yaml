@@ -8,6 +8,16 @@ jwt:
   access-token-expiration: 3600000    # Access Token 만료 시간 (1시간 = 3600000ms),  60초 * 60분
   refresh-token-expiration: 604800000  # Refresh Token 만료 시간 (7일 = 604800000ms)
 
+# OAuth 설정 (카카오, 구글 등)
+oauth:
+  kakao:
+    client-id: f0bfa98dfa477735feeb8dbfdfa1d105  # 카카오 REST API 키
+    client-secret: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV  # 카카오 Client Secret
+    redirect-uri: http://localhost:9080/auth/kakao/callback  # 카카오 인증 후 리다이렉트 URI
+    authorization-uri: https://kauth.kakao.com/oauth/authorize  # 카카오 인가 코드 요청 URI
+    token-uri: https://kauth.kakao.com/oauth/token  # 카카오 액세스 토큰 요청 URI
+    user-info-uri: https://kapi.kakao.com/v2/user/me  # 카카오 사용자 정보 조회 URI
+
 logging:
   file:
     name: logs/myauth.log
@@ -48,6 +58,3 @@ spring:
         # Hibernate가 DB에 날짜/시간을 저장할 때 사용할 타임존 (한국 시간)
         jdbc:
           time_zone: Asia/Seoul
-
-
-

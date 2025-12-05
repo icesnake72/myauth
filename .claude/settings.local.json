@@ -11,7 +11,8 @@
       "WebFetch(domain:github.com)",
       "Bash(./gradlew dependencies:*)",
       "Bash(/tmp/login_response.json)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": []

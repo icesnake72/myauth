@@ -25,4 +25,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
    * @return 존재하면 true, 아니면 false
    */
   boolean existsByEmail(String email);
+
+  /**
+   * OAuth 제공자와 제공자 ID로 사용자를 조회한다 (카카오, 구글 등)
+   * @param provider OAuth 제공자 (KAKAO, GOOGLE 등)
+   * @param providerId OAuth 제공자의 사용자 고유 ID
+   * @return 사용자 정보 (Optional)
+   */
+  Optional<User> findByProviderAndProviderId(String provider, String providerId);
 }
