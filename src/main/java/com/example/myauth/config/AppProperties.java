@@ -27,6 +27,11 @@ public class AppProperties {
    */
   private Cors cors = new Cors();
 
+  /**
+   * OAuth 리다이렉트 설정
+   */
+  private OAuth oauth = new OAuth();
+
   @Getter
   @Setter
   public static class Cookie {
@@ -55,5 +60,14 @@ public class AppProperties {
      * 쿠키 전송 허용 여부
      */
     private boolean allowCredentials = true;
+  }
+
+  @Getter
+  @Setter
+  public static class OAuth {
+    /**
+     * 카카오 로그인 성공 후 프론트엔드 리다이렉트 URL
+     */
+    private String kakaoRedirectUrl = "http://localhost:5173/oauth/callback";
   }
 }

@@ -20,6 +20,7 @@ public class UserController {
 
   /**
    * 현재 로그인한 사용자 정보 조회
+   * JWT Access Token을 통해 인증된 사용자의 전체 정보를 반환
    *
    * @param user SecurityContext에서 자동으로 주입되는 현재 로그인한 사용자 (JWT 토큰에서 추출됨)
    * @return 사용자 정보를 포함한 ApiResponse
@@ -30,13 +31,17 @@ public class UserController {
   ) {
     log.info("현재 사용자 정보 조회 요청: {}", user.getEmail());
 
-    // 사용자 정보를 Map으로 구성
+    // 사용자 정보를 Map으로 구성 (카카오 OAuth 정보 포함)
     Map<String, Object> userInfo = new HashMap<>();
     userInfo.put("id", user.getId());
     userInfo.put("email", user.getEmail());
     userInfo.put("name", user.getName());
+    userInfo.put("profileImage", user.getProfileImage());  // 프로필 이미지 추가
+    userInfo.put("provider", user.getProvider());  // OAuth 제공자 (KAKAO 등) 추가
     userInfo.put("role", user.getRole().name());
+    userInfo.put("status", user.getStatus().name());  // 계정 상태 추가
     userInfo.put("isActive", user.getIsActive());
+    userInfo.put("createdAt", user.getCreatedAt());  // 계정 생성일 추가
 
     // 응답 생성
     ApiResponse<Map<String, Object>> response =

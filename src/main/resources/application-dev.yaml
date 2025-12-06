@@ -46,6 +46,10 @@ app:
       - PATCH
     allow-credentials: true  # 쿠키 전송 허용
 
+  # OAuth 리다이렉트 설정
+  oauth:
+    kakao-redirect-url: http://localhost:5173/oauth/callback  # 카카오 로그인 성공 후 리다이렉트할 프론트엔드 URL
+
 
 # 개발 환경 실행
 # ./gradlew bootRun --args='--spring.profiles.active=dev'

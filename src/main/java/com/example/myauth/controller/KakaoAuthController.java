@@ -52,22 +52,22 @@ public class KakaoAuthController {
    * 카카오 로그인 콜백 처리 (하이브리드 방식 - 웹/모바일 구분)
    * 카카오 인증 후 Authorization Code를 받아 JWT 발급
    * 클라이언트 타입에 따라 토큰 전송 방식을 다르게 처리:
-   * - 웹 브라우저: Refresh Token을 HTTP-only 쿠키로 전송 (XSS 방어)
+   * - 웹 브라우저: Refresh Token을 HTTP-only 쿠키로 전송하고 프론트엔드로 리다이렉트 (XSS 방어)
    * - 모바일 앱: 모든 토큰을 JSON 응답 바디로 전송
    *
    * GET /auth/kakao/callback?code=AUTHORIZATION_CODE
    *
    * @param code 카카오 인가 코드
    * @param request HTTP 요청 객체 (클라이언트 타입 감지용)
-   * @param response HTTP 응답 객체 (쿠키 설정용)
-   * @return 로그인 응답 (JWT 포함)
+   * @param response HTTP 응답 객체 (쿠키 설정 및 리다이렉트용)
+   * @return 모바일: 로그인 응답 (JWT 포함) / 웹: 프론트엔드로 리다이렉트
    */
   @GetMapping("/callback")
-  public ResponseEntity<ApiResponse<LoginResponse>> kakaoCallback(
+  public void kakaoCallback(
       @RequestParam String code,
       HttpServletRequest request,
       HttpServletResponse response
-  ) {
+  ) throws IOException {
     log.info("카카오 로그인 콜백 - code: {}", code);
 
     try {
@@ -88,9 +88,9 @@ public class KakaoAuthController {
       LoginResponse loginResponse = kakaoOAuthService.processKakaoLogin(kakaoUserInfo);
       log.info("카카오 로그인 성공 - User ID: {}", loginResponse.getUser().getId());
 
-      // 5️⃣ 웹 클라이언트면 Refresh Token을 쿠키로 설정
+      // 5️⃣ 웹 클라이언트면 Refresh Token을 쿠키로 설정하고 프론트엔드로 리다이렉트
       if (isWebClient) {
-        log.info("웹 클라이언트 감지 → Refresh Token을 HTTP-only 쿠키로 설정");
+        log.info("웹 클라이언트 감지 → Refresh Token을 HTTP-only 쿠키로 설정하고 프론트엔드로 리다이렉트");
 
         // Refresh Token을 HTTP-only 쿠키로 설정
         Cookie refreshTokenCookie = new Cookie("refreshToken", loginResponse.getRefreshToken());
@@ -103,21 +103,42 @@ public class KakaoAuthController {
         response.addCookie(refreshTokenCookie);
         log.info("Refresh Token을 쿠키에 설정 완료");
 
-        // 응답 바디에서 Refresh Token 제거 (쿠키로 전송했으므로)
-        loginResponse.setRefreshToken(null);
-        log.info("응답 바디에서 Refresh Token 제거 (보안 강화)");
+        // 프론트엔드 리다이렉트 URL 생성 (Access Token을 URL 파라미터로 전달)
+        String redirectUrl = String.format("%s?accessToken=%s",
+            appProperties.getOauth().getKakaoRedirectUrl(),
+            loginResponse.getAccessToken()
+        );
+
+        log.info("프론트엔드로 리다이렉트: {}", redirectUrl);
+        response.sendRedirect(redirectUrl);
       } else {
-        // 6️⃣ 모바일 클라이언트면 Refresh Token을 JSON 응답에 포함
-        log.info("모바일 클라이언트 감지 → Refresh Token을 JSON 응답에 포함");
+        // 6️⃣ 모바일 클라이언트면 JSON 응답 반환
+        log.info("모바일 클라이언트 감지 → JSON 응답 반환");
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        // JSON 응답 작성
+        String jsonResponse = String.format(
+            "{\"success\":true,\"message\":\"카카오 로그인 성공\",\"data\":{\"accessToken\":\"%s\",\"refreshToken\":\"%s\",\"user\":{\"id\":%d,\"email\":\"%s\",\"name\":\"%s\"}}}",
+            loginResponse.getAccessToken(),
+            loginResponse.getRefreshToken(),
+            loginResponse.getUser().getId(),
+            loginResponse.getUser().getEmail(),
+            loginResponse.getUser().getName()
+        );
+        response.getWriter().write(jsonResponse);
       }
 
-      // 7️⃣ 로그인 성공 응답 반환
       log.info("카카오 로그인 성공: {}, 클라이언트: {}", loginResponse.getUser().getEmail(), clientType);
-      return ResponseEntity.ok(ApiResponse.success("카카오 로그인 성공", loginResponse));
 
     } catch (Exception e) {
       log.error("카카오 로그인 실패: {}", e.getMessage(), e);
-      return ResponseEntity.status(500).body(ApiResponse.error("카카오 로그인 실패: " + e.getMessage()));
+      // 에러 발생 시 프론트엔드로 리다이렉트 (에러 메시지 포함)
+      String errorRedirectUrl = String.format("%s?error=%s",
+          appProperties.getOauth().getKakaoRedirectUrl(),
+          java.net.URLEncoder.encode(e.getMessage(), "UTF-8")
+      );
+      response.sendRedirect(errorRedirectUrl);
     }
   }
 }
