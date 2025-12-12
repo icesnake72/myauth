@@ -1,0 +1,87 @@
+# ================================================
+# Docker Compose 설정 파일
+# 기존 MySQL 컨테이너(mysql-8)와 연동
+# ================================================
+
+version: '3.8'
+
+services:
+  # Spring Boot 애플리케이션
+  myauth:
+    # 이미지 빌드 설정
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # 컨테이너 이름
+    container_name: myauth
+
+    # 포트 매핑 (호스트:컨테이너)
+    ports:
+      - "9080:9080"
+
+    # 환경 변수 설정
+    environment:
+      # DB 연결 (mysql-8 컨테이너 이름 사용)
+      DB_URL: jdbc:mysql://mysql-8:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: 1234
+
+      # JWT 설정
+      JWT_SECRET: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
+      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
+      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+
+      # OAuth 카카오 설정
+      KAKAO_CLIENT_ID: f0bfa98dfa477735feeb8dbfdfa1d105
+      KAKAO_CLIENT_SECRET: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV
+      KAKAO_REDIRECT_URI: http://localhost:9080/auth/kakao/callback
+
+      # Spring 프로파일
+      SPRING_PROFILES_ACTIVE: dev
+
+    # 네트워크 설정 (mysql-8과 같은 네트워크 사용)
+    network_mode: bridge
+
+    # 의존성 (mysql-8이 실행 중이어야 함)
+    external_links:
+      - mysql-8
+
+    # 재시작 정책
+    restart: unless-stopped
+
+# ================================================
+# 사용 방법
+# ================================================
+#
+# 전제조건: mysql-8 컨테이너가 실행 중이어야 함
+#
+# 1. MySQL 컨테이너 확인
+#    docker ps | grep mysql-8
+#
+# 2. myauth 컨테이너 실행
+#    docker-compose up -d
+#
+# 3. 로그 확인
+#    docker-compose logs -f myauth
+#
+# 4. 중지
+#    docker-compose stop
+#
+# 5. 재시작
+#    docker-compose restart
+#
+# 6. 삭제
+#    docker-compose down
+#
+# 7. 강제 재빌드
+#    docker-compose up -d --build
+#
+# ================================================
+#
+# 참고:
+# - 기존 mysql-8 컨테이너를 사용합니다
+# - MySQL 포함 버전: docker-compose-shared.yml 참고
+# - MySQL 독립 실행: docker-compose-mysql-only.yml 참고
+#
+# ================================================

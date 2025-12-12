@@ -1,0 +1,72 @@
+# ================================================
+# .dockerignore
+# Docker 빌드 컨텍스트에서 제외할 파일/디렉토리 목록
+# 빌드 속도 향상 및 이미지 크기 최적화
+# ================================================
+
+# Gradle 빌드 산출물
+build/
+.gradle/
+bin/
+out/
+
+# IDE 설정 파일
+.idea/
+.vscode/
+.eclipse/
+*.iml
+*.ipr
+*.iws
+
+# 로그 파일
+logs/
+*.log
+
+# 임시 파일
+*.tmp
+*.temp
+*.swp
+*.bak
+*~
+
+# OS 생성 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Git 관련
+.git/
+.gitignore
+.gitattributes
+
+# Docker 관련
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose*.yml
+
+# 문서
+README.md
+*.md
+docs/
+
+# 테스트 관련
+**/test/
+*.test
+
+# 환경 변수 파일 (보안)
+.env
+.env.*
+*.env
+
+# SSL/TLS 인증서 (보안)
+*.p12
+*.jks
+*.keystore
+keystore.p12
+
+# 기타 불필요한 파일
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json

@@ -1,0 +1,67 @@
+# ================================================
+# 애플리케이션만 실행 (MySQL 제외)
+# 중앙 MySQL 서버에 연결
+# ================================================
+#
+# 전제조건: dev-mysql 컨테이너가 실행 중이어야 함
+# docker-compose -f docker-compose-mysql-only.yml up -d
+#
+# ================================================
+
+version: '3.8'
+
+services:
+  myauth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: myauth
+
+    ports:
+      - "9080:9080"
+
+    environment:
+      # localhost로 MySQL 연결 (dev-mysql 컨테이너의 3306 포트 사용)
+      DB_URL: jdbc:mysql://localhost:3306/myauth?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: 1234
+
+      JWT_SECRET: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
+      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
+      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+
+      KAKAO_CLIENT_ID: f0bfa98dfa477735feeb8dbfdfa1d105
+      KAKAO_CLIENT_SECRET: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV
+      KAKAO_REDIRECT_URI: http://localhost:9080/auth/kakao/callback
+
+      SPRING_PROFILES_ACTIVE: dev
+
+    # 호스트 네트워크 모드 (localhost로 MySQL 접근)
+    network_mode: host
+
+    restart: unless-stopped
+
+# ================================================
+# 사용 방법
+# ================================================
+#
+# 1. MySQL 서버 시작 (한 번만, 다른 터미널에서)
+#    cd ~/development/shared-infrastructure
+#    docker-compose -f docker-compose-mysql-only.yml up -d
+#
+# 2. 데이터베이스 생성 (한 번만)
+#    docker exec -it dev-mysql mysql -u root -p
+#    > CREATE DATABASE myauth;
+#    > exit;
+#
+# 3. 애플리케이션 실행
+#    docker-compose -f docker-compose-app-only.yml up -d
+#
+# 4. 로그 확인
+#    docker-compose -f docker-compose-app-only.yml logs -f
+#
+# 5. 중지 (MySQL은 계속 실행)
+#    docker-compose -f docker-compose-app-only.yml down
+#
+# ================================================

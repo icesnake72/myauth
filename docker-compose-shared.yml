@@ -1,0 +1,106 @@
+# ================================================
+# Docker Compose - 공유 MySQL 버전
+# 여러 프로젝트에서 같은 MySQL 사용
+# ================================================
+
+version: '3.8'
+
+services:
+  # 공유 MySQL 데이터베이스
+  mysql:
+    image: mysql:8
+    container_name: shared-mysql
+
+    ports:
+      - "3306:3306"
+
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      TZ: Asia/Seoul
+
+    # 데이터 보존
+    volumes:
+      - /Users/eunbumkim/datadir:/var/lib/mysql
+
+    # 외부 네트워크 사용
+    networks:
+      - shared-network
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    restart: unless-stopped
+
+  # Spring Boot 애플리케이션
+  myauth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: myauth
+
+    ports:
+      - "9080:9080"
+
+    environment:
+      DB_URL: jdbc:mysql://shared-mysql:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: 1234
+      JWT_SECRET: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
+      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
+      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+      KAKAO_CLIENT_ID: f0bfa98dfa477735feeb8dbfdfa1d105
+      KAKAO_CLIENT_SECRET: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV
+      KAKAO_REDIRECT_URI: http://localhost:9080/auth/kakao/callback
+      SPRING_PROFILES_ACTIVE: dev
+
+    networks:
+      - shared-network
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    restart: unless-stopped
+# no             | 자동 재시작 안함 (기본값)
+# always         | 항상 재시작 (수동 중지해도 Docker 재시작 시 자동 시작)
+# on-failure     | 실패 시에만 재시작 (종료 코드 ≠ 0)
+# unless-stopped | 수동 중지하지 않는 한 항상 재시작 ⭐
+
+# 외부에서도 사용 가능한 네트워크
+networks:
+  shared-network:
+    driver: bridge
+    name: shared-network  # 명시적 이름 지정
+
+# ================================================
+# 사용 방법
+# ================================================
+#
+# 1. 공유 네트워크와 MySQL 시작
+#    docker-compose -f docker-compose-shared.yml up -d
+#
+# 2. 다른 프로젝트의 docker-compose.yml 예시:
+#
+#    version: '3.8'
+#    services:
+#      other-app:
+#        image: my-other-app
+#        environment:
+#          DB_URL: jdbc:mysql://shared-mysql:3306/mannal
+#          DB_USERNAME: root
+#          DB_PASSWORD: 1234
+#        networks:
+#          - shared-network
+#
+#    networks:
+#      shared-network:
+#        external: true  # 기존 네트워크 사용
+#
+# 3. 또는 기존 컨테이너를 네트워크에 연결:
+#    docker network connect shared-network <container-name>
+#
+# ================================================
