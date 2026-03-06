@@ -52,6 +52,7 @@ app:
   # 쿠키 보안 설정
   cookie:
     secure: false  # HTTP 환경 (HTTPS 도메인 없음)
+    domain: ""     # 프로덕션 IP 환경: 빈 문자열 → domain 생략하여 브라우저가 현재 호스트(IP)에 자동 바인딩
 
   # CORS 허용 출처 (프로덕션 IP)
   cors:

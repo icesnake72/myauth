@@ -105,21 +105,30 @@ public class AuthController {
       log.info("웹 클라이언트 감지 → Refresh Token을 HTTP-only 쿠키로 설정");
 
       // Refresh Token을 HTTP-only 쿠키로 설정
-      // ResponseCookie를 사용하여 SameSite와 Domain 속성 명시
+      // ResponseCookie를 사용하여 SameSite 속성 명시
       // - SameSite=Lax: CSRF 방어 + 일반적인 웹 사용 가능
-      // - Domain=localhost: 포트 무관하게 모든 localhost에서 쿠키 공유 (localhost:5173과 localhost:9080 모두 접근 가능)
-      ResponseCookie refreshTokenCookie = ResponseCookie
+      // - Domain: 환경별 동적 설정
+      //   * 개발(localhost): "localhost" → 포트 무관하게 쿠키 공유
+      //   * 프로덕션(IP): 빈 문자열 → domain 생략하여 브라우저가 현재 호스트에 자동 바인딩
+      String cookieDomain = appProperties.getCookie().getDomain();
+      ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie
           .from("refreshToken", loginResponse.getRefreshToken())
           .httpOnly(true)   // JavaScript 접근 불가 (XSS 방어)
           .secure(appProperties.getCookie().isSecure())  // 환경별 동적 설정 (개발: false, 프로덕션: true)
           .path("/")        // 모든 경로에서 쿠키 전송
           .maxAge(7 * 24 * 60 * 60)  // 7일 (초 단위)
-          .sameSite("Lax")  // CSRF 방어 + 일반 네비게이션에서 쿠키 전송 허용
-          .domain("localhost")  // 포트 무관하게 localhost 전체에서 쿠키 공유
-          .build();
+          .sameSite("Lax"); // CSRF 방어 + 일반 네비게이션에서 쿠키 전송 허용
 
-      log.info("쿠키 설정: HttpOnly=true, Secure={}, Path=/, MaxAge=7일, SameSite=Lax, Domain=localhost",
-          appProperties.getCookie().isSecure());
+      // domain이 설정된 경우에만 쿠키에 Domain 속성 추가
+      // IP 주소 환경(프로덕션)에서는 domain을 생략해야 쿠키가 정상 작동함
+      if (cookieDomain != null && !cookieDomain.isBlank()) {
+        cookieBuilder.domain(cookieDomain);
+      }
+      ResponseCookie refreshTokenCookie = cookieBuilder.build();
+
+      log.info("쿠키 설정: HttpOnly=true, Secure={}, Path=/, MaxAge=7일, SameSite=Lax, Domain={}",
+          appProperties.getCookie().isSecure(),
+          cookieDomain != null && !cookieDomain.isBlank() ? cookieDomain : "(생략-현재호스트자동바인딩)");
 
       response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
       log.info("Refresh Token을 쿠키에 설정 완료");

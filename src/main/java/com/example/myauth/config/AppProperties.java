@@ -41,6 +41,14 @@ public class AppProperties {
      * - false: HTTP에서도 쿠키 전송 허용 (개발)
      */
     private boolean secure = false;  // 기본값: false (개발 환경)
+
+    /**
+     * 쿠키 Domain 설정
+     * - "localhost": 개발 환경 (localhost 포트 무관 공유)
+     * - "" (빈 문자열): 프로덕션 IP 환경 (브라우저가 현재 호스트에 자동 바인딩)
+     * - IP 주소 환경에서는 반드시 빈 문자열로 설정해야 쿠키가 정상 작동함
+     */
+    private String domain = "localhost";  // 기본값: localhost (개발 환경)
   }
 
   @Getter

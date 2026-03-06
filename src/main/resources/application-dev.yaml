@@ -29,6 +29,7 @@ app:
   # 쿠키 보안 설정
   cookie:
     secure: false  # HTTP 개발 환경에서는 false 설정
+    domain: localhost  # 개발 환경: localhost 포트 무관하게 쿠키 공유 (5173 ↔ 9080)
 
   # CORS 허용 출처 (개발 환경)
   cors:
