@@ -206,12 +206,28 @@ public class KakaoAuthController {
 
       // 5️⃣ 웹 클라이언트면 토큰을 URL fragment로 전달하고 프론트엔드로 리다이렉트
       if (isWebClient) {
-        log.info("웹 클라이언트 감지 → 토큰을 URL fragment로 전달하고 프론트엔드로 리다이렉트");
+        log.info("웹 클라이언트 감지 → Refresh Token을 쿠키로, Access Token을 URL fragment로 전달");
 
-        // 🔒 Cross-Port 세션 쿠키 문제 해결:
-        // 세션 쿠키는 포트가 다르면 공유되지 않으므로, 토큰을 URL fragment(#)로 전달
-        // URL fragment는 서버로 전송되지 않아 보안적으로 안전하며,
-        // 프론트엔드 JavaScript에서만 접근 가능
+        // 🔒 Refresh Token을 HTTP-only 쿠키로 설정 (리다이렉트 응답에 포함)
+        // 리다이렉트 응답의 Set-Cookie 헤더는 브라우저가 정상적으로 처리함
+        // → 새로고침 시 /api/refresh 호출할 때 쿠키가 자동으로 전송됨
+        String cookieDomain = appProperties.getCookie().getDomain();
+        ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie
+            .from("refreshToken", loginResponse.getRefreshToken())
+            .httpOnly(true)   // JavaScript 접근 불가 (XSS 방어)
+            .secure(appProperties.getCookie().isSecure())  // 환경별 동적 설정
+            .path("/")        // 모든 경로에서 쿠키 전송
+            .maxAge(7 * 24 * 60 * 60)  // 7일 (초 단위)
+            .sameSite("Lax"); // CSRF 방어
+
+        // IP 주소 환경(프로덕션)에서는 domain을 생략해야 쿠키가 정상 작동함
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+          cookieBuilder.domain(cookieDomain);
+        }
+        ResponseCookie refreshTokenCookie = cookieBuilder.build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        log.info("Refresh Token을 HTTP-only 쿠키로 설정 완료 (Domain={})",
+            cookieDomain != null && !cookieDomain.isBlank() ? cookieDomain : "(생략-현재호스트자동바인딩)");
 
         // 사용자 정보를 URL-safe하게 인코딩
         String userJson = String.format(
@@ -225,8 +241,8 @@ public class KakaoAuthController {
         );
         String encodedUser = java.net.URLEncoder.encode(userJson, "UTF-8");
 
-        // URL fragment로 토큰과 사용자 정보 전달
-        // fragment는 브라우저 히스토리에 남지 않도록 프론트엔드에서 즉시 처리 권장
+        // URL fragment로 Access Token과 사용자 정보 전달
+        // Refresh Token은 위에서 쿠키로 이미 설정됨
         String successRedirectUrl = String.format(
             "%s#accessToken=%s&user=%s",
             frontendRedirectUrl,
