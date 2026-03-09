@@ -72,6 +72,11 @@ public class PostListResponse {
   private Integer commentCount;
 
   /**
+   * 조회수
+   */
+  private Integer viewCount;
+
+  /**
    * 작성자 정보
    */
   private PostAuthorResponse author;
@@ -109,6 +114,7 @@ public class PostListResponse {
         .imageCount(post.getImages().size())
         .likeCount(post.getLikeCount())
         .commentCount(post.getCommentCount())
+        .viewCount(post.getViewCount())
         .author(PostAuthorResponse.from(post.getUser()))
         .createdAt(post.getCreatedAt())
         .build();
