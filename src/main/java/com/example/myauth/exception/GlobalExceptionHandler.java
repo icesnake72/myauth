@@ -309,6 +309,36 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * DM 채팅방 없음 예외 처리
+   * 존재하지 않는 채팅방 ID로 접근 시도 시 발생
+   */
+  @ExceptionHandler(DmRoomNotFoundException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleDmRoomNotFoundException(
+      DmRoomNotFoundException ex) {
+    log.warn("DM 채팅방 조회 실패: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 자기 자신에게 DM 시도 예외 처리
+   * 자신에게 메시지를 보내려고 할 때 발생
+   */
+  @ExceptionHandler(SelfDmException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleSelfDmException(
+      SelfDmException ex) {
+    log.warn("자기 DM 시도: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
    * Bean Validation 검증 실패 시 처리
    * Controller에서 @Valid 어노테이션으로 검증 실패한 경우 발생하는 예외를 처리한다
    *
