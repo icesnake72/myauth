@@ -212,4 +212,11 @@ public class Post {
   public void softDelete() {
     this.isDeleted = true;
   }
+
+  /**
+   * 논리적 삭제 복구
+   */
+  public void restore() {
+    this.isDeleted = false;
+  }
 }

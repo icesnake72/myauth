@@ -90,6 +90,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/kakao/**", "/api/auth/kakao/**").permitAll()
                 // 업로드된 이미지 파일 접근 (인증 불필요 - 공개 리소스)
                 .requestMatchers("/uploads/**").permitAll()
+                // 관리자 전용 경로
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // 그 외 모든 요청은 인증 필요
                 .anyRequest().authenticated()
         )
@@ -104,7 +106,11 @@ public class SecurityConfig {
             .accessDeniedHandler((request, response, accessDeniedException) -> {
               response.setStatus(HttpServletResponse.SC_FORBIDDEN);
               response.setContentType("application/json;charset=UTF-8");
-              response.getWriter().write("{\"error\":\"Access Denied\", \"message\":\"권한이 없습니다.\"}");
+              if (request.getRequestURI().startsWith("/api/admin/")) {
+                response.getWriter().write("{\"success\":false,\"message\":\"관리자 권한이 필요합니다.\",\"data\":null}");
+              } else {
+                response.getWriter().write("{\"error\":\"Access Denied\", \"message\":\"권한이 없습니다.\"}");
+              }
             })
         )
 
@@ -114,4 +120,3 @@ public class SecurityConfig {
     return http.build();
   }
 }
-

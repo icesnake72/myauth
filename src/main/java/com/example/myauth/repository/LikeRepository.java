@@ -211,4 +211,6 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
   List<Long> findLikedCommentIdsByUserId(
       @Param("userId") Long userId,
       @Param("commentIds") List<Long> commentIds);
+
+  long countByUserId(Long userId);
 }

@@ -1,9 +1,14 @@
 package com.example.myauth.repository;
 
 import com.example.myauth.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -40,4 +45,22 @@ public interface UserRepository extends JpaRepository<User, Long> {
    * @return 사용자 정보 (Optional)
    */
   Optional<User> findByName(String name);
+
+  long countByStatus(User.Status status);
+
+  long countByCreatedAtAfter(LocalDateTime dateTime);
+
+  @Query("SELECT u FROM User u WHERE " +
+      "(:keyword IS NULL OR u.email LIKE %:keyword% OR u.name LIKE %:keyword%) AND " +
+      "(:status IS NULL OR u.status = :status) AND " +
+      "(:role IS NULL OR u.role = :role) " +
+      "ORDER BY u.createdAt DESC")
+  Page<User> findByAdminFilter(
+      @Param("keyword") String keyword,
+      @Param("status") User.Status status,
+      @Param("role") User.Role role,
+      Pageable pageable
+  );
+
+  Page<User> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

@@ -166,4 +166,20 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
   @Query("UPDATE Comment c SET c.likeCount = c.likeCount - 1 " +
       "WHERE c.id = :commentId AND c.likeCount > 0")
   void decrementLikeCount(@Param("commentId") Long commentId);
+
+  long countByIsDeletedFalse();
+
+  long countByUserIdAndIsDeletedFalse(Long userId);
+
+  @Query("SELECT c FROM Comment c " +
+      "JOIN FETCH c.user " +
+      "JOIN FETCH c.post " +
+      "WHERE (:keyword IS NULL OR c.content LIKE %:keyword% OR c.user.name LIKE %:keyword%) " +
+      "AND (:postId IS NULL OR c.post.id = :postId) " +
+      "ORDER BY c.createdAt DESC")
+  Page<Comment> findByAdminFilter(
+      @Param("keyword") String keyword,
+      @Param("postId") Long postId,
+      Pageable pageable
+  );
 }

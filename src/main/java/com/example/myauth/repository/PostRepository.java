@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -210,4 +211,38 @@ public interface PostRepository extends JpaRepository<Post, Long> {
       "AND p.visibility = 'PUBLIC' " +
       "ORDER BY p.likeCount DESC, p.createdAt DESC")
   Page<Post> findRecommendedPosts(@Param("userId") Long userId, Pageable pageable);
+
+  long countByIsDeletedFalse();
+
+  /**
+   * 여러 사용자의 게시글 수를 한번에 조회 (N+1 방지)
+   * 관리자 사용자 목록에서 각 사용자별 게시글 수를 효율적으로 가져오기 위한 배치 쿼리
+   *
+   * @param userIds 사용자 ID 목록
+   * @return [userId, count] 배열 목록
+   */
+  @Query("SELECT p.user.id, COUNT(p) FROM Post p " +
+      "WHERE p.user.id IN :userIds AND p.isDeleted = false " +
+      "GROUP BY p.user.id")
+  List<Object[]> countPostsByUserIds(@Param("userIds") List<Long> userIds);
+
+  long countByCreatedAtAfterAndIsDeletedFalse(java.time.LocalDateTime dateTime);
+
+  long countByUserIdAndIsDeletedFalse(Long userId);
+
+  @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE " +
+      "(:keyword IS NULL OR p.content LIKE %:keyword% OR p.user.name LIKE %:keyword%) AND " +
+      "(:isDeleted IS NULL OR p.isDeleted = :isDeleted) " +
+      "ORDER BY p.createdAt DESC")
+  Page<Post> findByAdminFilter(
+      @Param("keyword") String keyword,
+      @Param("isDeleted") Boolean isDeleted,
+      Pageable pageable
+  );
+
+  @Query("SELECT DISTINCT p FROM Post p " +
+      "JOIN FETCH p.user " +
+      "LEFT JOIN FETCH p.images " +
+      "WHERE p.id = :postId")
+  Optional<Post> findByIdForAdmin(@Param("postId") Long postId);
 }

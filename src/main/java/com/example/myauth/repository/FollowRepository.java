@@ -137,6 +137,20 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
    */
   long countByFollowerId(Long userId);
 
+  // ===== 배치 카운트 =====
+
+  /**
+   * 여러 사용자의 팔로워 수를 한번에 조회 (N+1 방지)
+   * 관리자 사용자 목록에서 각 사용자별 팔로워 수를 효율적으로 가져오기 위한 배치 쿼리
+   *
+   * @param userIds 사용자 ID 목록
+   * @return [userId, count] 배열 목록
+   */
+  @Query("SELECT f.following.id, COUNT(f) FROM Follow f " +
+      "WHERE f.following.id IN :userIds " +
+      "GROUP BY f.following.id")
+  List<Object[]> countFollowersByUserIds(@Param("userIds") List<Long> userIds);
+
   // ===== 배치 조회 =====
 
   /**
