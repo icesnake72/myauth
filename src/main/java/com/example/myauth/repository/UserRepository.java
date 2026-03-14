@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -63,4 +64,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
   );
 
   Page<User> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+  /**
+   * 일별 신규 가입자 수 조회 (차트용 시계열 데이터)
+   * startDate 이후 날짜별로 그룹핑하여 가입자 수 반환
+   *
+   * @param startDate 조회 시작 일시
+   * @return [날짜(java.sql.Date), 가입자수(Long)] 배열 목록
+   */
+  @Query(value = "SELECT DATE(created_at) AS stat_date, COUNT(*) AS cnt " +
+      "FROM users WHERE created_at >= :startDate " +
+      "GROUP BY DATE(created_at) ORDER BY stat_date",
+      nativeQuery = true)
+  List<Object[]> countDailyNewUsers(@Param("startDate") LocalDateTime startDate);
 }

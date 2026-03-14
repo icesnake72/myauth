@@ -80,6 +80,70 @@ public class AdminService {
   }
 
   /**
+   * 일별 통계 조회 (대시보드 차트용 시계열 데이터)
+   * 지정된 기간 동안의 날짜별 신규 가입자, 게시글, 댓글 수 및 조회수를 반환
+   * 데이터가 없는 날짜도 0으로 채워서 연속적인 시계열 데이터를 보장
+   *
+   * 쿼리 실행 횟수: 총 4개 (신규 가입자, 신규 게시글, 신규 댓글, 조회수 합계)
+   *
+   * @param days 조회 기간 (일 수, 최대 90일)
+   * @return 일별 통계 목록 (최신 날짜가 먼저)
+   */
+  public List<AdminDailyStatsResponse> getDailyStats(int days) {
+    // 최대 90일로 제한
+    int limitedDays = Math.min(days, 90);
+    LocalDate today = LocalDate.now();
+    LocalDate startDate = today.minusDays(limitedDays - 1);
+    LocalDateTime startDateTime = startDate.atStartOfDay();
+
+    log.info("일별 통계 조회 - 기간: {} ~ {} ({}일)", startDate, today, limitedDays);
+
+    // 4개 배치 쿼리로 데이터 수집 (날짜별 그룹핑)
+    Map<LocalDate, Long> userCounts = toDateCountMap(userRepository.countDailyNewUsers(startDateTime));
+    Map<LocalDate, Long> postCounts = toDateCountMap(postRepository.countDailyNewPosts(startDateTime));
+    Map<LocalDate, Long> commentCounts = toDateCountMap(commentRepository.countDailyNewComments(startDateTime));
+    Map<LocalDate, Long> viewCounts = toDateCountMap(postRepository.sumDailyViews(startDateTime));
+
+    // 기간 내 모든 날짜에 대해 결과 생성 (데이터 없는 날짜는 0으로 채움)
+    List<AdminDailyStatsResponse> result = new java.util.ArrayList<>();
+    for (int i = 0; i < limitedDays; i++) {
+      LocalDate date = today.minusDays(i);
+      result.add(AdminDailyStatsResponse.builder()
+          .date(date)
+          .newUsers(userCounts.getOrDefault(date, 0L))
+          .newPosts(postCounts.getOrDefault(date, 0L))
+          .newComments(commentCounts.getOrDefault(date, 0L))
+          .totalViews(viewCounts.getOrDefault(date, 0L))
+          .build());
+    }
+
+    log.info("일별 통계 조회 완료 - {}일치 데이터 반환", result.size());
+    return result;
+  }
+
+  /**
+   * 네이티브 쿼리 결과 [java.sql.Date, Number]를 Map<LocalDate, Long>으로 변환
+   *
+   * @param results 네이티브 쿼리 결과 배열 목록
+   * @return 날짜 → 카운트 맵
+   */
+  private Map<LocalDate, Long> toDateCountMap(List<Object[]> results) {
+    Map<LocalDate, Long> map = new java.util.HashMap<>();
+    for (Object[] row : results) {
+      // 네이티브 쿼리의 DATE() 함수는 java.sql.Date를 반환
+      LocalDate date;
+      if (row[0] instanceof java.sql.Date) {
+        date = ((java.sql.Date) row[0]).toLocalDate();
+      } else {
+        date = LocalDate.parse(row[0].toString());
+      }
+      long count = ((Number) row[1]).longValue();
+      map.put(date, count);
+    }
+    return map;
+  }
+
+  /**
    * 최근 가입 사용자 조회 (대시보드용)
    * 배치 카운트 쿼리를 사용하여 N+1 문제 방지
    *

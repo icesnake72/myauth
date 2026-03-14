@@ -245,4 +245,30 @@ public interface PostRepository extends JpaRepository<Post, Long> {
       "LEFT JOIN FETCH p.images " +
       "WHERE p.id = :postId")
   Optional<Post> findByIdForAdmin(@Param("postId") Long postId);
+
+  /**
+   * 일별 신규 게시글 수 조회 (차트용 시계열 데이터)
+   * 삭제되지 않은 게시글만 카운트
+   *
+   * @param startDate 조회 시작 일시
+   * @return [날짜(java.sql.Date), 게시글수(Long)] 배열 목록
+   */
+  @Query(value = "SELECT DATE(created_at) AS stat_date, COUNT(*) AS cnt " +
+      "FROM posts WHERE created_at >= :startDate AND is_deleted = 0 " +
+      "GROUP BY DATE(created_at) ORDER BY stat_date",
+      nativeQuery = true)
+  List<Object[]> countDailyNewPosts(@Param("startDate") java.time.LocalDateTime startDate);
+
+  /**
+   * 일별 게시글 조회수 합계 조회 (차트용 시계열 데이터)
+   * 해당 날짜에 작성된 게시글들의 누적 조회수 합산
+   *
+   * @param startDate 조회 시작 일시
+   * @return [날짜(java.sql.Date), 조회수합계(Long)] 배열 목록
+   */
+  @Query(value = "SELECT DATE(created_at) AS stat_date, COALESCE(SUM(view_count), 0) AS total_views " +
+      "FROM posts WHERE created_at >= :startDate AND is_deleted = 0 " +
+      "GROUP BY DATE(created_at) ORDER BY stat_date",
+      nativeQuery = true)
+  List<Object[]> sumDailyViews(@Param("startDate") java.time.LocalDateTime startDate);
 }

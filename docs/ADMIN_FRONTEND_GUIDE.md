@@ -145,20 +145,21 @@
 | # | HTTP | URL | 기능 | 요청 Body |
 |---|------|-----|------|----------|
 | 1 | `GET` | `/dashboard/stats` | 대시보드 통계 | - |
-| 2 | `GET` | `/dashboard/recent-users?limit=10` | 최근 가입 사용자 | - |
-| 3 | `GET` | `/dashboard/recent-posts?limit=10` | 최근 게시글 | - |
-| 4 | `GET` | `/users?keyword=&status=&role=&page=0&size=20` | 사용자 목록 | - |
-| 5 | `GET` | `/users/{userId}` | 사용자 상세 | - |
-| 6 | `PUT` | `/users/{userId}/status` | 사용자 상태 변경 | ✅ |
-| 7 | `PUT` | `/users/{userId}/role` | 사용자 역할 변경 | ✅ |
-| 8 | `POST` | `/users/{userId}/force-logout` | 강제 로그아웃 | - |
-| 9 | `GET` | `/posts?keyword=&isDeleted=&page=0&size=20` | 게시글 목록 | - |
-| 10 | `GET` | `/posts/{postId}` | 게시글 상세 | - |
-| 11 | `DELETE` | `/posts/{postId}` | 게시글 삭제 | - |
-| 12 | `PUT` | `/posts/{postId}/restore` | 게시글 복구 | - |
-| 13 | `PUT` | `/posts/{postId}/visibility` | 공개 범위 변경 | ✅ |
-| 14 | `GET` | `/comments?keyword=&postId=&page=0&size=20` | 댓글 목록 | - |
-| 15 | `DELETE` | `/comments/{commentId}` | 댓글 삭제 | - |
+| 2 | `GET` | `/dashboard/daily-stats?days=30` | 일별 통계 (차트용) | - |
+| 3 | `GET` | `/dashboard/recent-users?limit=10` | 최근 가입 사용자 | - |
+| 4 | `GET` | `/dashboard/recent-posts?limit=10` | 최근 게시글 | - |
+| 5 | `GET` | `/users?keyword=&status=&role=&page=0&size=20` | 사용자 목록 | - |
+| 6 | `GET` | `/users/{userId}` | 사용자 상세 | - |
+| 7 | `PUT` | `/users/{userId}/status` | 사용자 상태 변경 | ✅ |
+| 8 | `PUT` | `/users/{userId}/role` | 사용자 역할 변경 | ✅ |
+| 9 | `POST` | `/users/{userId}/force-logout` | 강제 로그아웃 | - |
+| 10 | `GET` | `/posts?keyword=&isDeleted=&page=0&size=20` | 게시글 목록 | - |
+| 11 | `GET` | `/posts/{postId}` | 게시글 상세 | - |
+| 12 | `DELETE` | `/posts/{postId}` | 게시글 삭제 | - |
+| 13 | `PUT` | `/posts/{postId}/restore` | 게시글 복구 | - |
+| 14 | `PUT` | `/posts/{postId}/visibility` | 공개 범위 변경 | ✅ |
+| 15 | `GET` | `/comments?keyword=&postId=&page=0&size=20` | 댓글 목록 | - |
+| 16 | `DELETE` | `/comments/{commentId}` | 댓글 삭제 | - |
 
 ---
 
@@ -208,7 +209,80 @@ GET /api/admin/dashboard/stats
 
 ---
 
-### 5-2. 최근 가입 사용자 조회
+### 5-2. 일별 통계 조회 (차트용 시계열 데이터)
+
+```
+GET /api/admin/dashboard/daily-stats?days=30
+```
+
+**쿼리 파라미터:**
+| 파라미터 | 타입 | 기본값 | 설명 |
+|---------|------|-------|------|
+| `days` | int | 30 | 조회 기간 (일 수, 최소 1, 최대 90) |
+
+**응답 데이터:** `AdminDailyStatsResponse[]` (배열, 최신 날짜 먼저)
+
+```json
+{
+  "success": true,
+  "message": "일별 통계 조회 성공",
+  "data": [
+    {
+      "date": "2026-03-15",
+      "newUsers": 3,
+      "newPosts": 12,
+      "newComments": 28,
+      "totalViews": 156
+    },
+    {
+      "date": "2026-03-14",
+      "newUsers": 5,
+      "newPosts": 8,
+      "newComments": 15,
+      "totalViews": 203
+    },
+    {
+      "date": "2026-03-13",
+      "newUsers": 2,
+      "newPosts": 15,
+      "newComments": 42,
+      "totalViews": 312
+    }
+  ]
+}
+```
+
+> **특징:**
+> - 데이터가 없는 날짜도 0으로 채워져서 연속적인 시계열 데이터가 보장됩니다.
+> - `totalViews`는 해당 날짜에 작성된 게시글들의 누적 조회수 합계입니다.
+> - 최신 날짜가 배열의 앞에 옵니다 (내림차순).
+> - 차트 라이브러리(Recharts, Chart.js 등)에서 바로 사용할 수 있는 형식입니다.
+
+**React 차트 사용 예시 (Recharts):**
+```tsx
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+// API 데이터를 역순으로 정렬 (오래된 날짜 → 최신 날짜)
+const chartData = dailyStats.slice().reverse();
+
+<ResponsiveContainer width="100%" height={300}>
+  <LineChart data={chartData}>
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="date" />
+    <YAxis />
+    <Tooltip />
+    <Legend />
+    <Line type="monotone" dataKey="newUsers" stroke="#3b82f6" name="신규 가입" />
+    <Line type="monotone" dataKey="newPosts" stroke="#22c55e" name="신규 게시글" />
+    <Line type="monotone" dataKey="newComments" stroke="#eab308" name="신규 댓글" />
+    <Line type="monotone" dataKey="totalViews" stroke="#ef4444" name="조회수" />
+  </LineChart>
+</ResponsiveContainer>
+```
+
+---
+
+### 5-3. 최근 가입 사용자 조회
 
 ```
 GET /api/admin/dashboard/recent-users?limit=10
@@ -1022,6 +1096,15 @@ type Visibility = 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
 
 // ===== 대시보드 =====
 
+/** 일별 통계 (차트용 시계열 데이터) */
+interface DailyStats {
+  date: string;              // "yyyy-MM-dd" 형식
+  newUsers: number;
+  newPosts: number;
+  newComments: number;
+  totalViews: number;
+}
+
 /** 대시보드 통계 */
 interface DashboardStats {
   totalUsers: number;
@@ -1159,6 +1242,7 @@ export type {
   UserRole,
   UserStatus,
   Visibility,
+  DailyStats,
   DashboardStats,
   AdminUser,
   AdminUserDetail,
@@ -1182,7 +1266,7 @@ export type {
 // src/api/adminApi.ts
 import axiosInstance from './axiosInstance';
 import type {
-  ApiResponse, Page, DashboardStats,
+  ApiResponse, Page, DailyStats, DashboardStats,
   AdminUser, AdminUserDetail, StatusChangeRequest,
   RoleChangeRequest, ForceLogoutResponse,
   AdminPost, VisibilityChangeRequest,
@@ -1196,6 +1280,12 @@ const ADMIN_BASE = '/api/admin';
 /** 대시보드 통계 조회 */
 export const getDashboardStats = () =>
   axiosInstance.get<ApiResponse<DashboardStats>>(`${ADMIN_BASE}/dashboard/stats`);
+
+/** 일별 통계 조회 (차트용 시계열 데이터) */
+export const getDailyStats = (days: number = 30) =>
+  axiosInstance.get<ApiResponse<DailyStats[]>>(`${ADMIN_BASE}/dashboard/daily-stats`, {
+    params: { days },
+  });
 
 /** 최근 가입 사용자 조회 */
 export const getRecentUsers = (limit: number = 10) =>
@@ -1542,6 +1632,12 @@ BASE="http://localhost:8080/api/admin"
 
 # 통계 조회
 curl -s "$BASE/dashboard/stats" -H "Authorization: Bearer $TOKEN" | jq
+
+# 일별 통계 (최근 30일, 차트용)
+curl -s "$BASE/dashboard/daily-stats?days=30" -H "Authorization: Bearer $TOKEN" | jq
+
+# 일별 통계 (최근 7일)
+curl -s "$BASE/dashboard/daily-stats?days=7" -H "Authorization: Bearer $TOKEN" | jq
 
 # 최근 가입 사용자
 curl -s "$BASE/dashboard/recent-users?limit=5" -H "Authorization: Bearer $TOKEN" | jq

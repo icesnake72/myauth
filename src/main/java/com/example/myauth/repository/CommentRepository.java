@@ -182,4 +182,17 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
       @Param("postId") Long postId,
       Pageable pageable
   );
+
+  /**
+   * 일별 신규 댓글 수 조회 (차트용 시계열 데이터)
+   * 삭제되지 않은 댓글만 카운트
+   *
+   * @param startDate 조회 시작 일시
+   * @return [날짜(java.sql.Date), 댓글수(Long)] 배열 목록
+   */
+  @Query(value = "SELECT DATE(created_at) AS stat_date, COUNT(*) AS cnt " +
+      "FROM comments WHERE created_at >= :startDate AND is_deleted = 0 " +
+      "GROUP BY DATE(created_at) ORDER BY stat_date",
+      nativeQuery = true)
+  java.util.List<Object[]> countDailyNewComments(@Param("startDate") java.time.LocalDateTime startDate);
 }

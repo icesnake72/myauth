@@ -30,6 +30,16 @@ public class AdminController {
     return ResponseEntity.ok(ApiResponse.success("대시보드 통계 조회 성공", adminService.getDashboardStats()));
   }
 
+  // 일별 통계 조회 (차트용 시계열 데이터, days: 기본값 30, 최대 90)
+  @GetMapping("/dashboard/daily-stats")
+  public ResponseEntity<ApiResponse<List<AdminDailyStatsResponse>>> getDailyStats(
+      @RequestParam(defaultValue = "30") int days
+  ) {
+    if (days > 90) days = 90;
+    if (days < 1) days = 1;
+    return ResponseEntity.ok(ApiResponse.success("일별 통계 조회 성공", adminService.getDailyStats(days)));
+  }
+
   @GetMapping("/dashboard/recent-users")
   public ResponseEntity<ApiResponse<List<AdminUserListResponse>>> getRecentUsers(
       @RequestParam(defaultValue = "10") int limit
