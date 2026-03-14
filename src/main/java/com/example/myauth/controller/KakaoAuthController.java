@@ -229,12 +229,13 @@ public class KakaoAuthController {
         log.info("Refresh Token을 HTTP-only 쿠키로 설정 완료 (Domain={})",
             cookieDomain != null && !cookieDomain.isBlank() ? cookieDomain : "(생략-현재호스트자동바인딩)");
 
-        // 사용자 정보를 URL-safe하게 인코딩
+        // 사용자 정보를 URL-safe하게 인코딩 (role 포함 - 관리자 페이지 접근 판별용)
         String userJson = String.format(
-            "{\"id\":%d,\"email\":\"%s\",\"name\":\"%s\",\"profileImage\":%s}",
+            "{\"id\":%d,\"email\":\"%s\",\"name\":\"%s\",\"role\":\"%s\",\"profileImage\":%s}",
             loginResponse.getUser().getId(),
             loginResponse.getUser().getEmail(),
             loginResponse.getUser().getName(),
+            loginResponse.getUser().getRole(),
             loginResponse.getUser().getProfileImage() != null
                 ? "\"" + loginResponse.getUser().getProfileImage() + "\""
                 : "null"
@@ -258,14 +259,18 @@ public class KakaoAuthController {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // JSON 응답 작성
+        // JSON 응답 작성 (role 포함 - 관리자 페이지 접근 판별용)
         String jsonResponse = String.format(
-            "{\"success\":true,\"message\":\"카카오 로그인 성공\",\"data\":{\"accessToken\":\"%s\",\"refreshToken\":\"%s\",\"user\":{\"id\":%d,\"email\":\"%s\",\"name\":\"%s\"}}}",
+            "{\"success\":true,\"message\":\"카카오 로그인 성공\",\"data\":{\"accessToken\":\"%s\",\"refreshToken\":\"%s\",\"user\":{\"id\":%d,\"email\":\"%s\",\"name\":\"%s\",\"role\":\"%s\",\"profileImage\":%s}}}",
             loginResponse.getAccessToken(),
             loginResponse.getRefreshToken(),
             loginResponse.getUser().getId(),
             loginResponse.getUser().getEmail(),
-            loginResponse.getUser().getName()
+            loginResponse.getUser().getName(),
+            loginResponse.getUser().getRole(),
+            loginResponse.getUser().getProfileImage() != null
+                ? "\"" + loginResponse.getUser().getProfileImage() + "\""
+                : "null"
         );
         response.getWriter().write(jsonResponse);
       }
